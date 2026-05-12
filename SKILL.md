@@ -3,16 +3,17 @@ name: octoarms-x-collector
 description: Use when you need a standardized way to query HBM list tweets from Octoarms contents API, verify recent collection results, and troubleshoot empty results.
 ---
 
-# Query HBM Tweets
+# Query HBM / Tesla Tweets
 
 ## Overview
-Use this skill to query HBM list tweets through the Octoarms contents API in a consistent, repeatable way.
+Use this skill to query list tweets through the Octoarms contents API in a consistent, repeatable way.
 
-Target list for this skill is fixed:
-- `list_id`: `2053711728324874698`
+Supported lists in this skill:
+- HBM: `list_id=2053711728324874698`, `source_name=octoarms_hbm`, members source `42`, tweets source `43`
+- Tesla: `list_id=2054109618323030125`, `source_name=twitter_list_tweets:octoarms_tesla`, members source `44`, tweets source `45`
 
 ## When to Use
-- You need to check whether HBM list data is being collected.
+- You need to check whether HBM or Tesla list data is being collected.
 - You need a quick JSON proof for one or more tracked accounts.
 - You need to troubleshoot why a recent run appears to have no data.
 
@@ -75,6 +76,16 @@ Expected signal in response items:
 - `source_name: "octoarms_hbm"`
 - `username` matches query username
 
+Tesla example:
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&username=Tslachan&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+Tesla expected signal in rows:
+- `source_name: "twitter_list_tweets:octoarms_tesla"`
+
 ## How to Restrict to List `2053711728324874698`
 
 Current practical restriction strategy:
@@ -131,6 +142,86 @@ curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&u
   -H "X-API-Key: $OCTOARMS_API_KEY"
 ```
 
+## Source Tag Filtering
+
+Tier S only (any):
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&source_tags=tier_s&source_tags_mode=any&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+HBM + Tier S (all):
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&source_tags=hbm,tier_s&source_tags_mode=all&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+Current available `source_tags` for list `2053711728324874698`:
+- `hbm`
+- `tier_a`
+- `tier_b`
+- `tier_c`
+
+Tesla tier filters:
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&source_name=twitter_list_tweets:octoarms_tesla&source_tags=tesla,tier_s&source_tags_mode=all&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&source_name=twitter_list_tweets:octoarms_tesla&source_tags=tesla,tier_a&source_tags_mode=all&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&source_name=twitter_list_tweets:octoarms_tesla&source_tags=tesla,tier_b&source_tags_mode=all&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&source_name=twitter_list_tweets:octoarms_tesla&source_tags=tesla,tier_c&source_tags_mode=all&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&source_name=twitter_list_tweets:octoarms_tesla&source_tags=tesla,tier_d&source_tags_mode=all&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+Common combinations:
+- Tier S/A/B/C with HBM scope (example: `source_tags=hbm,tier_a&source_tags_mode=all`)
+- Tier-only filter (example: `source_tags=tier_c&source_tags_mode=any`)
+
+## Content Tag Filtering
+
+Content tags (any):
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&tags=hbm,semiconductor&tags_mode=any&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+Content tags (all):
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&tags=hbm,ai&tags_mode=all&recent=86400&limit=100&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
+
+Note:
+- `tags`/`tags_mode` filters content-level tags.
+- `source_tags`/`source_tags_mode` filters source-subscription tags.
+
+Current observed content tags (HBM sample window):
+- No content tags currently observed (`[]`).
+
+Implication:
+- `source_tags` is currently the reliable filter for HBM tier slicing.
+- `tags` filters will only become effective after content tagging pipeline writes content-level tags.
+
 ## Troubleshooting Empty Results
 If query returns empty data:
 1. Confirm account has posted within `recent` window.
@@ -140,5 +231,5 @@ If query returns empty data:
 5. Confirm returned rows include `source_name: "octoarms_hbm"`.
 
 ## Notes
-- This skill is scoped to list `2053711728324874698` only.
+- This skill supports both HBM and Tesla lists above.
 - Prefer account-based queries for operational checks.
