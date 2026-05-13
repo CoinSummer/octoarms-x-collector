@@ -1,9 +1,9 @@
 ---
 name: octoarms-x-collector
-description: Use when you need a standardized way to query monitored X list tweets (HBM/Tesla) from Octoarms contents API, verify recent collection results, and troubleshoot empty results.
+description: Use when you need a standardized way to query monitored X list tweets (HBM/Tesla/SiC) from Octoarms contents API, verify recent collection results, and troubleshoot empty results.
 ---
 
-# Query HBM / Tesla Tweets
+# Query HBM / Tesla / SiC Tweets
 
 ## Overview
 Use this skill to query list tweets through the Octoarms contents API in a consistent, repeatable way.
@@ -14,9 +14,10 @@ Supported lists in this skill:
 |---|---|---|---:|---:|---|
 | HBM | `2053711728324874698` | `octoarms_hbm` | `42` | `43` | `hbm` |
 | Tesla | `2054109618323030125` | `octoarms_tesla` | `44` | `45` | `tesla` |
+| SiC | `2054481346467377636` | `octoarms_sic_wolfspeed` | `46` | `47` | `sic` |
 
 ## When to Use
-- You need to check whether HBM or Tesla list data is being collected.
+- You need to check whether HBM, Tesla, or SiC list data is being collected.
 - You need a quick JSON proof for one or more tracked accounts.
 - You need to troubleshoot why a recent run appears to have no data.
 
@@ -194,5 +195,30 @@ If query returns empty data:
 5. Confirm returned rows include target `source_name`.
 
 ## Notes
-- This skill supports both HBM and Tesla lists above.
+- This skill supports HBM, Tesla, and SiC lists above.
 - Prefer account-based queries for operational checks.
+
+## SiC-specific Troubleshooting (important)
+
+When `source_name=octoarms_sic_wolfspeed` has data but `source_tags=sic,tier_s` is empty:
+
+1. Root cause is usually backfill window mismatch (scanning old IDs only).
+2. Run targeted backfill around recent content ID ranges instead of only `last_id=0`.
+
+Example:
+
+```bash
+for last_id in 520000 525000 530000 535000; do
+  curl -sS -X POST "$OCTOARMS_BASE_URL/api/v1/scanner-inter/content/subscription_links/backfill" \
+    -H "X-API-Key: $OCTOARMS_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"batch_size\":5000,\"last_id\":${last_id},\"offset\":0}"
+done
+```
+
+Then re-check:
+
+```bash
+curl -sS "$OCTOARMS_BASE_URL/api/v1/scanner/contents?type=tweet&source=twitter&source_tags=sic,tier_s&source_tags_mode=all&recent=604800&limit=20&order_by=published_at_desc" \
+  -H "X-API-Key: $OCTOARMS_API_KEY"
+```
